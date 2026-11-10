@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Supply Chain & Commodity Early Warning Intelligence System</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#080c14',
+              slate: '#0f172a',
+              card: '#131d31',
+              border: '#1e293b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Custom Terminal Styling -->
+  <link rel="stylesheet" href="/static/css/terminal.css">
+</head>
+<body class="bg-[#080c14] text-slate-100 min-h-screen antialiased flex flex-col">
+
+  <!-- ========================================== -->
+  <!-- TOP INTELLIGENCE TICKER & COMMAND BAR -->
+  <!-- ========================================== -->
+  <header class="bg-[#0f172a] border-b border-slate-800 px-4 py-2.5 flex items-center justify-between shrink-0 sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded bg-cyan-600/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-bold font-mono">
+        <i class="fa-solid fa-radar text-lg live-pulse"></i>
+      </div>
+      <div>
+        <div class="text-xs font-mono font-bold tracking-wider text-cyan-400 uppercase flex items-center gap-2">
+          <span>Global Early Warning System</span>
+          <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-ping"></span> LIVE MONITORING
+          </span>
+        </div>
+        <div class="text-sm font-bold text-slate-100 flex items-center gap-2">
+          Supply Chain & Commodity Control Tower
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Status & KPIs -->
+    <div class="hidden lg:flex items-center gap-5 text-xs font-mono">
+      <div class="flex items-center gap-2 px-3 py-1 rounded bg-slate-900 border border-slate-800">
+        <span class="text-slate-400">GLOBAL RISK:</span>
+        <span id="kpi-global-risk-badge" class="font-bold text-rose-400">🔴 Critical</span>
+      </div>
+
+      <div class="flex items-center gap-2 text-slate-400">
+        <i class="fa-regular fa-clock text-cyan-400"></i>
+        <span id="terminal-live-time">UTC</span>
+      </div>
+
+      <div class="text-slate-400">
+        Last Sync: <span id="terminal-last-sync" class="text-slate-200">2026-10-31 17:00:00</span>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-2.5">
+      <button id="btn-live-scan" onclick="triggerLiveIngestion()" class="px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm">
+        <i class="fa-solid fa-satellite-dish live-pulse"></i> Live Scan
+      </button>
+
+      <button onclick="openRiskWeightsModal()" class="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs border border-slate-700" title="Transparent Risk Formula Weights">
+        <i class="fa-solid fa-sliders text-amber-400"></i> Weights
+      </button>
+
+      <button onclick="switchView('alerts')" class="relative px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs border border-slate-700">
+        <i class="fa-regular fa-bell text-rose-400"></i>
+        <span id="header-alert-badge" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-[9px] font-bold text-white flex items-center justify-center hidden">3</span>
+      </button>
+
+      <button id="theme-toggle-btn" onclick="toggleTheme()" class="p-1.5 text-slate-400 hover:text-slate-200">
+        <i class="fa-solid fa-sun"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- NATURAL LANGUAGE QUERY & SEARCH BAR -->
+  <!-- ========================================== -->
+  <div class="bg-[#0b111f] border-b border-slate-800 px-4 py-2 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shrink-0">
+    <div class="flex-1 flex items-center gap-2">
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+        <input id="global-search-input" type="text" 
+          placeholder="Ask or search natural language: e.g. 'Semiconductor risks originating in China' or 'Lead times increased >50%'..." 
+          class="w-full bg-slate-900/90 border border-slate-700/80 rounded pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
+          onkeydown="if(event.key==='Enter') executeSmartSearch(this.value)">
+      </div>
+      <button onclick="executeSmartSearch(document.getElementById('global-search-input').value)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs font-mono font-semibold text-cyan-400">
+        Analyze
+      </button>
+    </div>
+
+    <!-- Preset Query Pills -->
+    <div class="hidden xl:flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+      <span class="text-slate-500 uppercase text-[10px]">Presets:</span>
+      <button onclick="executeSmartSearch('indian stocks')" class="px-2 py-0.5 rounded bg-orange-950/60 hover:bg-orange-900/60 border border-orange-500/50 text-orange-300 font-bold flex items-center gap-1">
+        <span>🇮🇳</span> Indian Stocks
+      </button>
+      <button onclick="switchView('order-pipeline')" class="px-2 py-0.5 rounded bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/50 text-emerald-300 font-bold flex items-center gap-1">
+        <span>📈</span> Order Pipeline & Surge
+      </button>
+      <button onclick="switchView('shortage-articles')" class="px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/60 border border-purple-500/50 text-purple-300 font-bold flex items-center gap-1">
+        <span>📖</span> Shortage Dossiers
+      </button>
+      <button onclick="executeSmartSearch('semiconductor china')" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300">
+        Semis in China
+      </button>
+      <button onclick="executeSmartSearch('lead times increased')" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-amber-300">
+        Lead Times +50%
+      </button>
+      <button onclick="executeSmartSearch('spof')" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-rose-300">
+        Single Points of Failure
+      </button>
+      <button onclick="executeSmartSearch('sulfur h-acid')" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-cyan-300">
+        Sulfur $\rightarrow$ H-Acid Chain
+      </button>
+      <button onclick="executeSmartSearch('export restriction')" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-purple-300">
+        Export Controls
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MAIN WORKSPACE: SIDEBAR + CONTENT -->
+  <!-- ========================================== -->
+  <div class="flex-1 flex overflow-hidden">
+    
+    <!-- 16-ITEM NAVIGATION SIDEBAR -->
+    <aside class="w-56 bg-[#0f172a] border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto">
+      <div class="p-2.5 text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold border-b border-slate-800/60">
+        Operational Views (16)
+      </div>
+
+      <nav class="space-y-0.5 p-1.5 text-xs font-medium">
+        <a href="#command-center" data-view-target="command-center" class="flex items-center gap-2.5 px-3 py-2 rounded text-cyan-400 bg-slate-800 border-l-2 border-cyan-400 transition-colors">
+          <i class="fa-solid fa-gauge-high w-4 text-center"></i> Command Center
+        </a>
+        <a href="#live-events" data-view-target="live-events" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-bolt w-4 text-center text-amber-400"></i> Live Events
+        </a>
+        <a href="#commodities" data-view-target="commodities" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-cubes-stacked w-4 text-center text-blue-400"></i> Commodities
+        </a>
+        <a href="#critical-materials" data-view-target="critical-materials" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-gem w-4 text-center text-rose-400"></i> Critical Materials
+        </a>
+        <a href="#components" data-view-target="components" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-microchip w-4 text-center text-purple-400"></i> Components
+        </a>
+        <a href="#semiconductors" data-view-target="semiconductors" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-memory w-4 text-center text-cyan-400"></i> Semiconductors
+        </a>
+        <a href="#supply-chains" data-view-target="supply-chains" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-diagram-project w-4 text-center text-emerald-400"></i> Supply Chains
+        </a>
+        <a href="#policy-tracker" data-view-target="policy-tracker" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-gavel w-4 text-center text-purple-400"></i> Policy Tracker
+        </a>
+        <a href="#geopolitical" data-view-target="geopolitical" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-shield-halved w-4 text-center text-rose-400"></i> Geopolitical Risks
+        </a>
+        <a href="#price-pressure" data-view-target="price-pressure" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-arrow-trend-up w-4 text-center text-rose-400"></i> Price Pressure
+        </a>
+        <a href="#lead-times" data-view-target="lead-times" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-hourglass-half w-4 text-center text-amber-400"></i> Lead Times
+        </a>
+        <a href="#industry-impact" data-view-target="industry-impact" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-industry w-4 text-center text-slate-300"></i> Industry Impact
+        </a>
+        <a href="#indian-stocks" data-view-target="indian-stocks" class="flex items-center justify-between px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors pl-6 border-l-2 border-orange-500/50">
+          <span class="flex items-center gap-2">
+            <i class="fa-solid fa-indian-rupee-sign w-3.5 text-center text-orange-400"></i> Indian Stocks
+          </span>
+          <span class="text-[9px] font-mono font-bold px-1 py-0.2 rounded bg-orange-500/20 text-orange-300 border border-orange-500/40">NSE/BSE</span>
+        </a>
+        <a href="#order-pipeline" data-view-target="order-pipeline" class="flex items-center justify-between px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors pl-6 border-l-2 border-emerald-500/50">
+          <span class="flex items-center gap-2">
+            <i class="fa-solid fa-file-invoice-dollar w-3.5 text-center text-emerald-400"></i> Order Pipeline
+          </span>
+          <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">SURGE</span>
+        </a>
+        <a href="#shortage-articles" data-view-target="shortage-articles" class="flex items-center justify-between px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors pl-6 border-l-2 border-purple-500/50">
+          <span class="flex items-center gap-2">
+            <i class="fa-solid fa-book-open-reader w-3.5 text-center text-purple-400"></i> Shortage Dossiers
+          </span>
+          <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">ARTICLES</span>
+        </a>
+        <a href="#global-map" data-view-target="global-map" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-earth-americas w-4 text-center text-cyan-400"></i> Global Map
+        </a>
+        <a href="#historical-timeline" data-view-target="historical-timeline" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-chart-line w-4 text-center text-blue-400"></i> Historical Timeline
+        </a>
+        <a href="#alerts" data-view-target="alerts" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-bell w-4 text-center text-amber-400"></i> Alerts
+        </a>
+        <a href="#data-sources" data-view-target="data-sources" class="flex items-center gap-2.5 px-3 py-2 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors">
+          <i class="fa-solid fa-database w-4 text-center text-emerald-400"></i> Data Sources
+        </a>
+      </nav>
+
+      <!-- Sidebar Footer Status -->
+      <div class="mt-auto p-3 border-t border-slate-800 text-[11px] font-mono text-slate-400 space-y-1">
+        <div class="flex items-center justify-between">
+          <span>Engine Status:</span>
+          <span class="text-emerald-400 font-bold">ONLINE</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span>Deduplication:</span>
+          <span class="text-cyan-400">ACTIVE</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTENT DISPLAY CONTAINER -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+
+      <!-- ========================================== -->
+      <!-- VIEW 1: COMMAND CENTER -->
+      <!-- ========================================== -->
+      <section id="view-command-center" class="view-section space-y-6">
+        
+        <!-- TOP-LEVEL KPI METRIC CARDS -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <!-- 1. Global Supply Risk -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-rose-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Global Supply Risk</div>
+            <div id="gauge-score-value" class="text-xl font-bold font-mono text-rose-400">84.5</div>
+            <div class="text-[10px] text-slate-500 font-mono">🔴 CRITICAL INDEX</div>
+          </div>
+
+          <!-- 2. Active Disruptions -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-amber-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Active Disruptions</div>
+            <div id="kpi-active-disruptions" class="text-xl font-bold font-mono text-amber-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">Ongoing Events</div>
+          </div>
+
+          <!-- 3. Price Pressure Events -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-rose-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Price Pressure</div>
+            <div id="kpi-price-pressure" class="text-xl font-bold font-mono text-rose-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">Rising Materials</div>
+          </div>
+
+          <!-- 4. Lead-Time Risks -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-purple-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Lead-Time Risks</div>
+            <div id="kpi-lead-times" class="text-xl font-bold font-mono text-purple-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">&gt;25% Stretch</div>
+          </div>
+
+          <!-- 5. New (7 Days) -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-cyan-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">New Last 7 Days</div>
+            <div id="kpi-new-7d" class="text-xl font-bold font-mono text-cyan-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">Emerging Signals</div>
+          </div>
+
+          <!-- 6. Escalating Events -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-rose-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Escalating</div>
+            <div id="kpi-escalating" class="text-xl font-bold font-mono text-rose-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">Severity Expanding</div>
+          </div>
+
+          <!-- 7. Critical Materials at Risk -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-red-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Critical Materials</div>
+            <div id="kpi-crit-materials" class="text-xl font-bold font-mono text-red-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">Score $\ge$ 80</div>
+          </div>
+        </div>
+
+        <!-- WHAT CHANGED TODAY SECTION -->
+        <div class="terminal-card p-4 rounded-lg space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 live-pulse"></span>
+              <h2 class="text-sm font-bold font-mono uppercase tracking-wider text-slate-200">
+                WHAT CHANGED TODAY? — Intelligence Feed & Signals
+              </h2>
+            </div>
+            <span class="text-xs font-mono text-slate-500">Updated continuously via RSS & verified cables</span>
+          </div>
+
+          <div id="what-changed-today-list" class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <!-- Injected via JavaScript -->
+          </div>
+        </div>
+
+        <!-- TOP 20 GLOBAL SUPPLY-CHAIN RISKS TABLE -->
+        <div class="terminal-card p-4 rounded-lg space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div>
+              <h2 class="text-sm font-bold font-mono uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-rose-400"></i> TOP 20 GLOBAL SUPPLY-CHAIN RISKS
+              </h2>
+              <p class="text-xs text-slate-400">Ranked by severity, concentration, price impact, lead times, and downstream criticality</p>
+            </div>
+            <span class="text-xs font-mono text-slate-400">Ranked 1 to 20</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full dense-table text-left">
+              <thead>
+                <tr>
+                  <th class="w-12">#</th>
+                  <th>Material / Bottleneck</th>
+                  <th>Origin</th>
+                  <th>Risk Score</th>
+                  <th>Price Pressure</th>
+                  <th>Lead Time</th>
+                  <th>Status</th>
+                  <th class="text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="top20-risks-table-body">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- THREE-COLUMN ANALYTICAL PANELS -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- 1. WHAT COULD BECOME EXPENSIVE? -->
+          <div class="terminal-card p-4 rounded-lg space-y-3">
+            <div class="pb-2 border-b border-slate-800">
+              <h3 class="text-xs font-bold font-mono uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                <i class="fa-solid fa-eye text-amber-400"></i> WHAT COULD BECOME EXPENSIVE?
+              </h3>
+              <p class="text-[11px] text-slate-500 font-mono">Forward-looking probabilistic indicators</p>
+            </div>
+            <div id="what-could-become-expensive-container" class="space-y-2.5">
+              <!-- Injected via JavaScript -->
+            </div>
+          </div>
+
+          <!-- 2. WHAT IS ALREADY GETTING EXPENSIVE? -->
+          <div class="terminal-card p-4 rounded-lg space-y-3">
+            <div class="pb-2 border-b border-slate-800">
+              <h3 class="text-xs font-bold font-mono uppercase tracking-wider text-rose-400 flex items-center gap-2">
+                <i class="fa-solid fa-arrow-up-right-dots text-rose-400"></i> WHAT IS ALREADY GETTING EXPENSIVE?
+              </h3>
+              <p class="text-[11px] text-slate-500 font-mono">Confirmed verified price increases</p>
+            </div>
+            <div id="what-is-already-expensive-container" class="space-y-2.5">
+              <!-- Injected via JavaScript -->
+            </div>
+          </div>
+
+          <!-- 3. WHAT IS BECOMING HARDER TO BUY? -->
+          <div class="terminal-card p-4 rounded-lg space-y-3">
+            <div class="pb-2 border-b border-slate-800">
+              <h3 class="text-xs font-bold font-mono uppercase tracking-wider text-purple-400 flex items-center gap-2">
+                <i class="fa-solid fa-box-open text-purple-400"></i> WHAT IS BECOMING HARDER TO BUY?
+              </h3>
+              <p class="text-[11px] text-slate-500 font-mono">Physical allocation & inventory deficits</p>
+            </div>
+            <div id="what-is-harder-to-buy-container" class="space-y-2.5">
+              <!-- Injected via JavaScript -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 2: LIVE EVENTS FEED -->
+      <!-- ========================================== -->
+      <section id="view-live-events" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold font-mono uppercase text-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-bolt text-amber-400"></i> Live Intelligence Events Directory
+              </h2>
+              <span id="live-events-count-badge" class="px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-mono text-xs border border-amber-500/30">Loading...</span>
+            </div>
+            <p class="text-xs text-slate-400">Continuously monitored global supply chain disruptions spanning the last 12 months across all 8 major sectors</p>
+          </div>
+
+          <!-- Multi-faceted Filters -->
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <select id="filter-category" onchange="loadLiveEventsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200">
+              <option value="All">All Categories (8 Sectors)</option>
+              <option value="Geopolitical">Geopolitical</option>
+              <option value="Government / Policy">Government / Policy</option>
+              <option value="Raw Material / Commodity">Raw Material / Commodity</option>
+              <option value="Semiconductor / Electronics">Semiconductor / Electronics</option>
+              <option value="Manufacturing">Manufacturing</option>
+              <option value="Energy">Energy</option>
+              <option value="Transportation / Logistics">Transportation / Logistics</option>
+              <option value="Climate / Natural Disasters">Climate / Natural Disasters</option>
+            </select>
+
+            <select id="filter-status" onchange="loadLiveEventsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200">
+              <option value="All">All Statuses</option>
+              <option value="Ongoing">Ongoing</option>
+              <option value="Escalating">Escalating</option>
+              <option value="Improving">Improving</option>
+              <option value="In Effect">In Effect</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+
+            <select id="filter-datatype" onchange="loadLiveEventsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200">
+              <option value="All">All Tiers (Live & Hist)</option>
+              <option value="LIVE">LIVE Only</option>
+              <option value="RECENT">RECENT (Last 90d)</option>
+              <option value="HISTORICAL">HISTORICAL (12m)</option>
+            </select>
+
+            <input id="filter-search" type="text" placeholder="Search event / country / material..." oninput="loadLiveEventsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 placeholder-slate-500 w-52">
+            <button onclick="resetLiveEventsFilters()" title="Reset Filters" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="live-events-container" class="space-y-3">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 3: COMMODITIES WATCHLIST -->
+      <!-- ========================================== -->
+      <section id="view-commodities" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold font-mono uppercase text-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-cubes-stacked text-blue-400"></i> Commodity & Material Vulnerability Watchlist
+              </h2>
+              <span id="commodities-count-badge" class="px-2 py-0.5 rounded bg-slate-800 text-blue-400 font-mono text-xs border border-blue-500/30">Loading...</span>
+            </div>
+            <p class="text-xs text-slate-400">Track price pressure, lead times, supply concentration, and substitutability across critical global inputs</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <select id="filter-comm-category" onchange="loadCommoditiesView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200">
+              <option value="All">All Categories</option>
+              <option value="Metals & Minerals">Metals & Minerals</option>
+              <option value="Industrial Chemical">Industrial Chemicals</option>
+              <option value="Specialty Chemical">Specialty Chemicals</option>
+              <option value="Industrial & Rare Gases">Industrial & Rare Gases</option>
+              <option value="Energy & Nuclear">Energy & Nuclear</option>
+            </select>
+
+            <label class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 cursor-pointer">
+              <input type="checkbox" id="filter-comm-spof" onchange="loadCommoditiesView()" class="rounded border-slate-700 text-rose-500 focus:ring-0">
+              <span class="text-rose-400 font-semibold">SPOF Only</span>
+            </label>
+
+            <input id="filter-comm-search" type="text" placeholder="Search commodity..." oninput="loadCommoditiesView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 placeholder-slate-500 w-44">
+            <button onclick="resetCommoditiesFilters()" title="Reset Filters" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="terminal-card rounded-lg overflow-x-auto">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Category</th>
+                <th>Risk Score</th>
+                <th>Early Warning</th>
+                <th>Price Status</th>
+                <th>Lead Time</th>
+                <th>SPOF</th>
+                <th>Mining / Refining Conc.</th>
+                <th>Substitutes</th>
+                <th>Primary Disruption Driver</th>
+                <th class="text-right">Dossier</th>
+              </tr>
+            </thead>
+            <tbody id="commodities-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 4: CRITICAL MATERIALS & CONCENTRATION -->
+      <!-- ========================================== -->
+      <section id="view-critical-materials" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold font-mono uppercase text-rose-400 flex items-center gap-2">
+                <i class="fa-solid fa-radiation"></i> Single Point of Failure (SPOF) Intelligence
+              </h2>
+              <span id="critical-materials-count-badge" class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono text-xs border border-rose-500/40">Loading...</span>
+            </div>
+            <p class="text-xs text-slate-400">Materials and inputs where processing is heavily monopolized by a single sovereign or company with extreme switching friction</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <select id="filter-cm-country" onchange="loadCriticalMaterialsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200">
+              <option value="All">All Sovereign Monopolies</option>
+              <option value="China">China (>60% Control)</option>
+              <option value="Russia">Russia / Rosatom</option>
+              <option value="DR Congo">DR Congo (Cobalt)</option>
+              <option value="South Africa">South Africa (PGMs)</option>
+              <option value="Japan">Japan (Chemicals & Wafers)</option>
+              <option value="USA">USA / Western Sole Sources</option>
+            </select>
+
+            <input id="filter-cm-search" type="text" placeholder="Search SPOF material..." oninput="loadCriticalMaterialsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 placeholder-slate-500 w-44">
+            <button onclick="resetCriticalMaterialsFilters()" title="Reset Filters" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="critical-materials-spof-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 5: COMPONENTS INTELLIGENCE -->
+      <!-- ========================================== -->
+      <section id="view-components" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold font-mono uppercase text-purple-400 flex items-center gap-2">
+                <i class="fa-solid fa-microchip"></i> Critical Components & Hardware Subsystems
+              </h2>
+              <span id="components-count-badge" class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono text-xs border border-purple-500/40">Loading...</span>
+            </div>
+            <p class="text-xs text-slate-400">Tracking delivery lead times, manufacturing allocations, and supplier backlogs across Computing, Aerospace, Defence, Power, and Automotive</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <select id="filter-comp-sector" onchange="loadComponentsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200">
+              <option value="All">All Sectors</option>
+              <option value="Computing / AI">Computing / AI</option>
+              <option value="Semiconductors">Semiconductors & Equipment</option>
+              <option value="Power Infrastructure">Power Infrastructure</option>
+              <option value="Aerospace & Defence">Aerospace & Defence</option>
+              <option value="Automotive">Automotive & Power Semis</option>
+              <option value="Electronics / PCBs">PCBs, Passives & Connectors</option>
+            </select>
+
+            <select id="filter-comp-risk" onchange="loadComponentsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200">
+              <option value="All">All Risk Levels</option>
+              <option value="Critical">Critical Risk</option>
+              <option value="High">High Risk</option>
+              <option value="Moderate">Moderate Risk</option>
+            </select>
+
+            <input id="filter-comp-search" type="text" placeholder="Search component/supplier..." oninput="loadComponentsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 placeholder-slate-500 w-44">
+            <button onclick="resetComponentsFilters()" title="Reset Filters" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="terminal-card rounded-lg overflow-x-auto">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Component / Subsystem</th>
+                <th>Sector</th>
+                <th>Risk</th>
+                <th>Normal Lead Time</th>
+                <th>Current Lead Time</th>
+                <th>% Stretch</th>
+                <th>SPOF</th>
+                <th>Bottleneck Cause</th>
+                <th>Downstream Impact</th>
+              </tr>
+            </thead>
+            <tbody id="components-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 6: SEMICONDUCTORS ECOSYSTEM -->
+      <!-- ========================================== -->
+      <section id="view-semiconductors" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold font-mono uppercase text-cyan-400 flex items-center gap-2">
+                <i class="fa-solid fa-memory"></i> Semiconductor & Advanced Packaging Ecosystem
+              </h2>
+              <span id="semi-count-badge" class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-xs border border-cyan-500/40">Loading...</span>
+            </div>
+            <p class="text-xs text-slate-400">Foundry wafer fabrication, advanced CoWoS packaging, HBM memory stacks, DUV/EUV lithography tools, substrates, and electronic chemicals</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <select id="filter-semi-sector" onchange="loadSemiconductorsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200">
+              <option value="All">All Semiconductor Domains</option>
+              <option value="AI Accelerators">AI Accelerators & GPUs</option>
+              <option value="Memory">High Bandwidth Memory (HBM/DRAM/NAND)</option>
+              <option value="Wafers">Silicon Wafers & ABF Substrates</option>
+              <option value="Equipment">Lithography & Fab Equipment</option>
+              <option value="Chemicals">Photoresists & Ultra-Pure Gases</option>
+              <option value="Power">Power Semis (SiC / GaN)</option>
+            </select>
+
+            <input id="filter-semi-search" type="text" placeholder="Search node, tool or supplier..." oninput="loadSemiconductorsView()" class="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 placeholder-slate-500 w-52">
+            <button onclick="resetSemiconductorsFilters()" title="Reset Filters" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Semiconductor Top KPI Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+          <div class="p-3 rounded-lg bg-slate-900 border border-slate-800">
+            <div class="text-slate-500 uppercase text-[10px]">Tracked Semi Subsystems</div>
+            <div id="semi-kpi-total" class="text-xl font-bold text-cyan-400 mt-1">14 Systems</div>
+            <div class="text-[10px] text-slate-400">From 2nm EUV to 300mm Wafers</div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-900 border border-slate-800">
+            <div class="text-slate-500 uppercase text-[10px]">Monopoly / SPOF Nodes</div>
+            <div id="semi-kpi-spof" class="text-xl font-bold text-rose-400 mt-1">8 Chokepoints</div>
+            <div class="text-[10px] text-slate-400">TSMC, ASML, JSR, Ajinomoto, SK Hynix</div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-900 border border-slate-800">
+            <div class="text-slate-500 uppercase text-[10px]">Max Lead-Time Stretch</div>
+            <div id="semi-kpi-leadtime" class="text-xl font-bold text-amber-400 mt-1">+128% (36 wks)</div>
+            <div class="text-[10px] text-slate-400">HBM3e & CoWoS Packaging</div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-900 border border-slate-800">
+            <div class="text-slate-500 uppercase text-[10px]">Highest Capital Equipment Lead Time</div>
+            <div id="semi-kpi-equip" class="text-xl font-bold text-purple-400 mt-1">105 wks (2.0 yrs)</div>
+            <div class="text-[10px] text-slate-400">High-NA 0.55 NA EUV Scanners</div>
+          </div>
+        </div>
+
+        <!-- High-Density Semiconductor Table -->
+        <div class="terminal-card rounded-lg overflow-x-auto">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Semiconductor Component / Node</th>
+                <th>Category</th>
+                <th>Risk Level</th>
+                <th>Normal Lead Time</th>
+                <th>Current Lead Time</th>
+                <th>% Stretch</th>
+                <th>SPOF Choke Point</th>
+                <th>Key Suppliers</th>
+                <th>Bottleneck Root Cause</th>
+              </tr>
+            </thead>
+            <tbody id="semiconductors-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Visual Architecture & Packaging Chains -->
+        <div id="semiconductor-chains-container" class="space-y-4">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 7: SUPPLY CHAINS -->
+      <!-- ========================================== -->
+      <section id="view-supply-chains" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg">
+          <h2 class="text-base font-bold font-mono uppercase text-emerald-400 flex items-center gap-2">
+            <i class="fa-solid fa-diagram-project"></i> End-to-End Supply Chain Value Chain Flows
+          </h2>
+          <p class="text-xs text-slate-400">Visual mappings from primary raw materials through intermediates to final assemblies</p>
+        </div>
+
+        <div id="supply-chains-flows-container">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 8: POLICY TRACKER -->
+      <!-- ========================================== -->
+      <section id="view-policy-tracker" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg">
+          <h2 class="text-base font-bold font-mono uppercase text-purple-400 flex items-center gap-2">
+            <i class="fa-solid fa-gavel"></i> Policy $\rightarrow$ Supply Chain Impact Monitor
+          </h2>
+          <p class="text-xs text-slate-400">Tracking tariffs, export controls, import bans, environmental regulations, and local content laws</p>
+        </div>
+
+        <div class="terminal-card rounded-lg overflow-x-auto">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Policy Instrument</th>
+                <th>Country</th>
+                <th>Type</th>
+                <th>Effective Date</th>
+                <th>Status</th>
+                <th>Price Impact</th>
+                <th>Supply Impact</th>
+              </tr>
+            </thead>
+            <tbody id="policies-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 9: GEOPOLITICAL RISKS -->
+      <!-- ========================================== -->
+      <section id="view-geopolitical" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg">
+          <h2 class="text-base font-bold font-mono uppercase text-rose-400 flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved"></i> Geopolitical Conflict & Chokepoint Intelligence
+          </h2>
+          <p class="text-xs text-slate-400">Monitoring armed conflicts, straits, maritime blockade threats, and sanctions</p>
+        </div>
+
+        <div id="geopolitical-events-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 10: PRICE PRESSURE -->
+      <!-- ========================================== -->
+      <section id="view-price-pressure" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg">
+          <h2 class="text-base font-bold font-mono uppercase text-rose-400 flex items-center gap-2">
+            <i class="fa-solid fa-arrow-trend-up"></i> Price Pressure Detector
+          </h2>
+          <p class="text-xs text-slate-400">Distinguishing confirmed price rises from building fundamental pressures</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="terminal-card p-4 rounded-lg space-y-3">
+            <h3 class="text-xs font-mono font-bold uppercase text-rose-400 border-b border-slate-800 pb-2">
+              <i class="fa-solid fa-fire mr-1"></i> PRICE ALREADY RISING (Confirmed Evidence)
+            </h3>
+            <div id="price-already-rising-list" class="space-y-2"></div>
+          </div>
+
+          <div class="terminal-card p-4 rounded-lg space-y-3">
+            <h3 class="text-xs font-mono font-bold uppercase text-amber-400 border-b border-slate-800 pb-2">
+              <i class="fa-solid fa-gauge mr-1"></i> PRICE PRESSURE BUILDING (Fundamental Supply Deficit)
+            </h3>
+            <div id="price-pressure-building-list" class="space-y-2"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 11: LEAD TIMES DETECTOR -->
+      <!-- ========================================== -->
+      <section id="view-lead-times" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg">
+          <h2 class="text-base font-bold font-mono uppercase text-amber-400 flex items-center gap-2">
+            <i class="fa-solid fa-hourglass-half"></i> Lead-Time Expansion Detector
+          </h2>
+          <p class="text-xs text-slate-400">Order $\rightarrow$ Production $\rightarrow$ Shipment $\rightarrow$ Delivery duration tracker</p>
+        </div>
+
+        <div class="terminal-card rounded-lg overflow-x-auto">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Subsystem / Material</th>
+                <th>Sector</th>
+                <th>Baseline Lead Time</th>
+                <th>Current Lead Time</th>
+                <th>% Stretch</th>
+                <th>Root Bottleneck</th>
+                <th>Suppliers</th>
+              </tr>
+            </thead>
+            <tbody id="lead-times-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 12: INDUSTRY IMPACT -->
+      <!-- ========================================== -->
+      <section id="view-industry-impact" class="view-section hidden space-y-4">
+        <!-- Sub-navigation Toggle -->
+        <div class="terminal-card p-2 rounded-lg flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <button onclick="switchView('industry-impact')" class="px-3 py-1.5 rounded bg-cyan-600 text-white font-mono text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-globe"></i> Global 18 Industries
+            </button>
+            <button onclick="switchView('indian-stocks')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-orange-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-orange-500/40 transition-colors">
+              <i class="fa-solid fa-indian-rupee-sign text-orange-400"></i> Indian Stocks Impact (Large to Nano Caps)
+              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-orange-500/30 text-orange-200">31 Listed</span>
+            </button>
+            <button onclick="switchView('order-pipeline')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-emerald-500/40 transition-colors">
+              <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i> Order Pipeline & Landmark Orders
+              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/30 text-emerald-200">Surge Tracker</span>
+            </button>
+          </div>
+          <span class="text-xs font-mono text-slate-400 hidden md:inline">Supply-Chain Transmission Analysis</span>
+        </div>
+
+        <div class="terminal-card p-4 rounded-lg">
+          <h2 class="text-base font-bold font-mono uppercase text-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-industry text-cyan-400"></i> Industry Vulnerability Dashboards (18 Sectors)
+          </h2>
+          <p class="text-xs text-slate-400">Sector-specific risk scores, value-chain node vulnerabilities, and active disruption counts</p>
+        </div>
+
+        <div id="industry-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: INDIAN STOCKS IMPACT -->
+      <!-- ========================================== -->
+      <section id="view-indian-stocks" class="view-section hidden space-y-4">
+        <!-- Sub-navigation Toggle & Header -->
+        <div class="terminal-card p-2 rounded-lg flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <button onclick="switchView('industry-impact')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
+              <i class="fa-solid fa-globe"></i> Global 18 Industries
+            </button>
+            <button onclick="switchView('indian-stocks')" class="px-3 py-1.5 rounded bg-orange-600 text-white font-mono text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-indian-rupee-sign"></i> Indian Stocks Impact (Large to Nano Caps)
+              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-black/30 text-white">Active</span>
+            </button>
+            <button onclick="switchView('order-pipeline')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-emerald-500/40 transition-colors">
+              <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i> Order Pipeline & Landmark Orders
+              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/30 text-emerald-200">Surge Tracker</span>
+            </button>
+          </div>
+          <span class="text-xs font-mono text-slate-400 hidden md:inline">NSE &amp; BSE Listed Companies</span>
+        </div>
+
+        <div class="terminal-card p-4 rounded-lg border-l-4 border-orange-500 space-y-1">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold font-mono uppercase text-orange-400 flex items-center gap-2">
+              <i class="fa-solid fa-chart-line-up"></i> Indian Equities Supply-Chain &amp; Commodity Impact Radar
+            </h2>
+            <span class="terminal-badge px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/40">
+              Coverage: Large Cap to Nano Cap
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Traces global supply chain bottlenecks (lead-time stretches &amp; price surges) into Indian listed companies — distinguishing <span class="text-amber-400 font-bold">DIRECT</span> exposures from indirect second-order impacts, and flagging <span class="text-rose-400 font-bold">NEGATIVE margin erosion</span> vs <span class="text-emerald-400 font-bold">POSITIVE beneficiaries</span>.
+          </p>
+        </div>
+
+        <!-- KPI SUMMARY CARDS -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs font-mono">
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-cyan-500">
+            <div class="text-[10px] text-slate-400 uppercase">Tracked Companies</div>
+            <div id="indian-kpi-total" class="text-xl font-bold text-cyan-400">31</div>
+            <div class="text-[10px] text-slate-500">NSE &amp; BSE Listed</div>
+          </div>
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-amber-500">
+            <div class="text-[10px] text-slate-400 uppercase">Direct Impact Stocks</div>
+            <div id="indian-kpi-direct" class="text-xl font-bold text-amber-400">--</div>
+            <div class="text-[10px] text-slate-500">Immediate Input Shock ⚠️</div>
+          </div>
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-rose-500">
+            <div class="text-[10px] text-slate-400 uppercase">Negative Margin Risk</div>
+            <div id="indian-kpi-negative" class="text-xl font-bold text-rose-400">--</div>
+            <div class="text-[10px] text-slate-500">Cost Spike / Lead Lag</div>
+          </div>
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-emerald-500">
+            <div class="text-[10px] text-slate-400 uppercase">Positive Beneficiaries</div>
+            <div id="indian-kpi-positive" class="text-xl font-bold text-emerald-400">--</div>
+            <div class="text-[10px] text-slate-500">Spread / Indigenization</div>
+          </div>
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-purple-500">
+            <div class="text-[10px] text-slate-400 uppercase">Market Cap Spectrum</div>
+            <div class="text-sm font-bold text-purple-300">Large $\rightarrow$ Nano</div>
+            <div class="text-[10px] text-slate-500">₹85 Cr to ₹3.2L Cr</div>
+          </div>
+        </div>
+
+        <!-- COMPREHENSIVE FILTER CONTROLS -->
+        <div class="terminal-card p-4 rounded-lg space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-mono">
+            <span class="text-slate-300 uppercase font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-filter text-orange-400"></i> Stock Screener &amp; Transmission Filters
+            </span>
+            <button onclick="resetIndianStockFilters()" class="text-slate-400 hover:text-cyan-300 text-[11px] underline">
+              Reset Filters
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs font-mono">
+            <!-- Market Cap Filter -->
+            <div>
+              <label class="text-[10px] text-slate-400 uppercase block mb-1">Market Cap Tier</label>
+              <select id="filter-stock-mcap" onchange="loadIndianStocksView()" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+                <option value="All">All Tiers (Large to Nano)</option>
+                <option value="Large Cap">Large Cap (&gt;₹20k Cr)</option>
+                <option value="Mid Cap">Mid Cap (₹5k–₹20k Cr)</option>
+                <option value="Small Cap">Small Cap (₹1k–₹5k Cr)</option>
+                <option value="Micro Cap">Micro Cap (₹500–₹1k Cr)</option>
+                <option value="Nano Cap">Nano Cap (&lt;₹500 Cr)</option>
+                <option value="Micro/Nano Cap">Combined Micro &amp; Nano</option>
+              </select>
+            </div>
+
+            <!-- Impact Direction -->
+            <div>
+              <label class="text-[10px] text-slate-400 uppercase block mb-1">Impact Direction</label>
+              <select id="filter-stock-direction" onchange="loadIndianStocksView()" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+                <option value="All">All Directions</option>
+                <option value="NEGATIVE">🔻 Negative (Cost Inflation / Delay)</option>
+                <option value="POSITIVE">🟢 Positive (Domestic Beneficiary)</option>
+              </select>
+            </div>
+
+            <!-- Impact Nature -->
+            <div>
+              <label class="text-[10px] text-slate-400 uppercase block mb-1">Directness</label>
+              <select id="filter-stock-nature" onchange="loadIndianStocksView()" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+                <option value="All">All (Direct &amp; Indirect)</option>
+                <option value="DIRECT">Direct Impact Only ⚠️</option>
+                <option value="INDIRECT">Indirect / Second-Order</option>
+              </select>
+            </div>
+
+            <!-- Sector Filter -->
+            <div>
+              <label class="text-[10px] text-slate-400 uppercase block mb-1">Sector</label>
+              <select id="filter-stock-sector" onchange="loadIndianStocksView()" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+                <option value="All">All Sectors</option>
+                <option value="Power">Power &amp; Transformers</option>
+                <option value="Chemicals">Chemicals &amp; Dyes</option>
+                <option value="Defence">Aerospace &amp; Defence</option>
+                <option value="Semiconductors">Semiconductors &amp; EMS</option>
+                <option value="Automotive">Automotive &amp; EVs</option>
+                <option value="Mining">Metals &amp; Mining</option>
+                <option value="Agriculture">Fertilizers &amp; Agri</option>
+              </select>
+            </div>
+
+            <!-- Material Trigger -->
+            <div>
+              <label class="text-[10px] text-slate-400 uppercase block mb-1">Material Trigger</label>
+              <select id="filter-stock-material" onchange="loadIndianStocksView()" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+                <option value="All">All Materials</option>
+                <option value="Sulfur">Sulfur &amp; H-Acid</option>
+                <option value="Copper">Refined Copper</option>
+                <option value="GOES">GOES Electrical Steel</option>
+                <option value="Titanium">Aerospace Titanium</option>
+                <option value="Antimony">Antimony</option>
+                <option value="Alumina">Bauxite / Alumina</option>
+                <option value="Semiconductor">Semiconductors / ICs</option>
+                <option value="Magnet">Rare Earth Magnets</option>
+              </select>
+            </div>
+
+            <!-- Search -->
+            <div>
+              <label class="text-[10px] text-slate-400 uppercase block mb-1">Search Ticker/Company</label>
+              <input id="filter-stock-search" type="text" placeholder="e.g. TRIL, NALCO, Bodal..." oninput="loadIndianStocksView()" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200 placeholder-slate-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- HIGH-DENSITY STOCKS TABLE -->
+        <div class="terminal-card rounded-lg overflow-x-auto">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Ticker &amp; Company</th>
+                <th>Market Cap (INR)</th>
+                <th>Directness</th>
+                <th>Impact &amp; Margin Delta</th>
+                <th>Trigger Materials &amp; Bottlenecks</th>
+                <th>Lead-Time Sensitivity</th>
+                <th>Pricing Power</th>
+                <th>Transmission Mechanism</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="indian-stocks-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: ORDER PIPELINE & LANDMARK ORDERS -->
+      <!-- ========================================== -->
+      <section id="view-order-pipeline" class="view-section hidden space-y-4">
+        <!-- Sub-navigation Toggle & Header -->
+        <div class="terminal-card p-2 rounded-lg flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <button onclick="switchView('industry-impact')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
+              <i class="fa-solid fa-globe"></i> Global 18 Industries
+            </button>
+            <button onclick="switchView('indian-stocks')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-orange-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-orange-500/40 transition-colors">
+              <i class="fa-solid fa-indian-rupee-sign text-orange-400"></i> Indian Stocks Impact
+            </button>
+            <button onclick="switchView('order-pipeline')" class="px-3 py-1.5 rounded bg-emerald-600 text-white font-mono text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-file-invoice-dollar"></i> Order Pipeline &amp; Landmark Orders
+              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-black/30 text-white">Active</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="bg-slate-900 border border-slate-700 p-0.5 rounded flex items-center text-xs font-mono">
+              <button id="btn-tab-companies" onclick="switchOrderPipelineTab('companies')" class="px-3 py-1 rounded bg-emerald-700 text-white font-semibold">
+                <i class="fa-solid fa-building"></i> Company Order Books
+              </button>
+              <button id="btn-tab-orders" onclick="switchOrderPipelineTab('orders')" class="px-3 py-1 rounded text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-receipt"></i> Landmark Orders Feed
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Banner Header -->
+        <div class="terminal-card p-4 rounded-lg border-l-4 border-emerald-500 space-y-1">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold font-mono uppercase text-emerald-400 flex items-center gap-2">
+                <i class="fa-solid fa-chart-column"></i> Order Pipeline &amp; Landmark Order Surge Intelligence
+              </h2>
+              <p class="text-xs text-slate-400">
+                Tracking Indian companies across <span class="text-slate-200 font-mono font-bold">Large, Mid, Small, Micro, and Nano Caps</span> securing outsized orders vs historical averages, total order books, active bidding pipelines, and critical supply chain bottlenecks.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="terminal-badge px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-mono">
+                <i class="fa-solid fa-bolt text-emerald-400"></i> HIGH SURGE MULTIPLIERS
+              </span>
+              <button onclick="loadOrderPipelineView()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5 TOP KPI STATISTIC CARDS -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <!-- KPI 1: Cumulative Order Pipeline -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-emerald-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Total Order Pipeline</div>
+            <div id="pipe-kpi-total-pipeline" class="text-xl font-bold font-mono text-emerald-400">₹-- Cr</div>
+            <div class="text-[10px] text-slate-500 font-mono flex items-center justify-between">
+              <span>Book: <span id="pipe-kpi-order-book" class="text-emerald-300">₹--</span></span>
+              <span>Bids: <span id="pipe-kpi-bidding" class="text-cyan-300">₹--</span></span>
+            </div>
+          </div>
+
+          <!-- KPI 2: Recent Inflows & Orders -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-cyan-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Recent Inflows (TTM)</div>
+            <div id="pipe-kpi-recent-inflows" class="text-xl font-bold font-mono text-cyan-400">₹-- Cr</div>
+            <div class="text-[10px] text-slate-500 font-mono">
+              <span id="pipe-kpi-orders-count" class="text-slate-300 font-bold">--</span> Landmark Orders Logged
+            </div>
+          </div>
+
+          <!-- KPI 3: Avg Order Surge Multiplier -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-amber-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Avg Order Surge</div>
+            <div id="pipe-kpi-avg-surge" class="text-xl font-bold font-mono text-amber-400">--x</div>
+            <div class="text-[10px] text-slate-500 font-mono">vs Historical Benchmark</div>
+          </div>
+
+          <!-- KPI 4: High Revenue Visibility (Book-to-Bill >= 2.0x) -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-purple-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">High Visibility (≥2.0x)</div>
+            <div id="pipe-kpi-high-visibility" class="text-xl font-bold font-mono text-purple-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">&gt;2 Yrs Revenue Locked</div>
+          </div>
+
+          <!-- KPI 5: Raw Material Choke Risk -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-rose-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Delivery Bottlenecks</div>
+            <div id="pipe-kpi-choke-count" class="text-xl font-bold font-mono text-rose-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">&gt;45 Wks Material Lead Time</div>
+          </div>
+        </div>
+
+        <!-- FILTER TOOLBAR -->
+        <div class="terminal-card p-3 rounded-lg flex flex-wrap items-center gap-3 text-xs font-mono">
+          <!-- Market Cap Tier Filter -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">Cap Tier:</span>
+            <select id="filter-pipe-mcap" onchange="loadOrderPipelineView()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500">
+              <option value="All">All Caps (Large to Nano)</option>
+              <option value="Large Cap">Large Cap (&gt;₹50,000 Cr)</option>
+              <option value="Mid Cap">Mid Cap (₹15,000-50,000 Cr)</option>
+              <option value="Small Cap">Small Cap (₹2,000-15,000 Cr)</option>
+              <option value="Micro/Nano Cap">Micro &amp; Nano Cap (&lt;₹2,000 Cr)</option>
+            </select>
+          </div>
+
+          <!-- Sector Filter -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">Sector:</span>
+            <select id="filter-pipe-sector" onchange="loadOrderPipelineView()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500">
+              <option value="All">All Sectors</option>
+              <option value="Power Equipment">Power Equipment &amp; T&amp;D</option>
+              <option value="Aerospace & Defence">Aerospace &amp; Defence</option>
+              <option value="Electronics & EMS">Electronics &amp; EMS</option>
+              <option value="Specialty Chemicals">Specialty Chemicals</option>
+              <option value="Industrial Machinery">Industrial Machinery</option>
+            </select>
+          </div>
+
+          <!-- Surge Multiplier Filter -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">Min Surge:</span>
+            <select id="filter-pipe-surge" onchange="loadOrderPipelineView()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500">
+              <option value="0">All Surges</option>
+              <option value="4.0">≥ 4.0x Surge</option>
+              <option value="5.0">≥ 5.0x Surge</option>
+              <option value="6.0">≥ 6.0x Surge</option>
+              <option value="7.0">≥ 7.0x Mega Surge</option>
+            </select>
+          </div>
+
+          <!-- Bottleneck Risk Filter -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">Input Risk:</span>
+            <select id="filter-pipe-risk" onchange="loadOrderPipelineView()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500">
+              <option value="All">All Risks</option>
+              <option value="Critical">Critical (&gt;50 wks lead)</option>
+              <option value="High">High (40-50 wks)</option>
+              <option value="Moderate">Moderate (25-40 wks)</option>
+              <option value="Low">Low (&lt;25 wks)</option>
+            </select>
+          </div>
+
+          <!-- Sort Filter -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">Sort By:</span>
+            <select id="filter-pipe-sort" onchange="loadOrderPipelineView()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500">
+              <option value="surge_multiplier_desc">Surge Multiplier (High to Low)</option>
+              <option value="order_book_desc">Total Order Book (High to Low)</option>
+              <option value="book_to_bill_desc">Book-to-Bill Ratio (High to Low)</option>
+              <option value="market_cap_desc">Market Cap (High to Low)</option>
+              <option value="bidding_pipeline_desc">Bidding Pipeline (High to Low)</option>
+            </select>
+          </div>
+
+          <!-- Search Input -->
+          <div class="flex-1 min-w-[200px] relative">
+            <input id="filter-pipe-search" type="text" placeholder="Search company, ticker, material, client..." 
+              class="w-full bg-slate-900 border border-slate-700 rounded pl-7 pr-2 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              oninput="debounceOrderPipelineSearch()">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-500 text-[10px]"></i>
+          </div>
+
+          <!-- Reset Filter -->
+          <button onclick="resetOrderPipelineFilters()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs border border-slate-700">
+            Reset
+          </button>
+        </div>
+
+        <!-- TAB 1: COMPANY ORDER BOOKS TABLE -->
+        <div id="tab-container-companies" class="terminal-card rounded-lg overflow-x-auto">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Ticker &amp; Company</th>
+                <th>Cap Tier &amp; Sector</th>
+                <th class="text-right">Executable Order Book</th>
+                <th class="text-right">TTM Revenue</th>
+                <th class="text-center">Book-to-Bill (Coverage)</th>
+                <th class="text-right">Hist. vs Landmark Avg</th>
+                <th class="text-center">Surge Multiplier</th>
+                <th class="text-right">Total Pipeline (Book + Bids)</th>
+                <th>Primary Bottleneck &amp; Lead Time</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="order-pipeline-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- TAB 2: LANDMARK SIGNIFICANT ORDERS FEED -->
+        <div id="tab-container-orders" class="terminal-card rounded-lg overflow-x-auto hidden">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Date &amp; Tag</th>
+                <th>Company</th>
+                <th>Client &amp; Category</th>
+                <th class="text-right">Order Value</th>
+                <th class="text-right">% of Annual Rev</th>
+                <th class="text-center">Surge Factor</th>
+                <th>Scope of Work &amp; Delivery Cycle</th>
+                <th>Critical Material &amp; Bottleneck Note</th>
+                <th class="text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody id="significant-orders-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: STRATEGIC SHORTAGE ARTICLES & OPPORTUNITY PLAYBOOKS -->
+      <!-- ========================================== -->
+      <section id="view-shortage-articles" class="view-section hidden space-y-4">
+        <!-- Sub-navigation Toggle & Header -->
+        <div class="terminal-card p-2 rounded-lg flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <button onclick="switchView('industry-impact')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
+              <i class="fa-solid fa-globe"></i> Global 18 Industries
+            </button>
+            <button onclick="switchView('indian-stocks')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-orange-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-orange-500/40 transition-colors">
+              <i class="fa-solid fa-indian-rupee-sign text-orange-400"></i> Indian Stocks Impact
+            </button>
+            <button onclick="switchView('order-pipeline')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 font-mono text-xs font-semibold flex items-center gap-1.5 border border-emerald-500/40 transition-colors">
+              <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i> Order Pipeline &amp; Surge
+            </button>
+            <button onclick="switchView('shortage-articles')" class="px-3 py-1.5 rounded bg-purple-600 text-white font-mono text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-book-open-reader"></i> Shortage Dossiers &amp; Playbooks
+              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-black/30 text-white">Active</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="promptGenerateCustomArticle()" class="px-3 py-1.5 rounded bg-purple-950/80 hover:bg-purple-900 border border-purple-500/50 text-purple-200 font-mono text-xs font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i> Generate Topic Dossier
+            </button>
+          </div>
+        </div>
+
+        <!-- Banner Header -->
+        <div class="terminal-card p-4 rounded-lg border-l-4 border-purple-500 space-y-1">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold font-mono uppercase text-purple-400 flex items-center gap-2">
+                <i class="fa-solid fa-book-open"></i> Strategic Supply Shortage Intelligence &amp; Market Opportunity Playbooks
+              </h2>
+              <p class="text-xs text-slate-400">
+                In-depth analytical dossiers investigating: <span class="text-slate-200 font-bold font-mono">1. What is short and why?</span> • <span class="text-slate-200 font-bold font-mono">2. World opportunities &amp; challenges</span> • <span class="text-slate-200 font-bold font-mono">3. Opportunities &amp; challenges for Indian companies</span> • <span class="text-slate-200 font-bold font-mono">4. Overall Market Size (TAM)</span> • <span class="text-slate-200 font-bold font-mono">5. What global &amp; Indian companies are doing to fix it.</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="terminal-badge px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[11px] font-mono">
+                <i class="fa-solid fa-newspaper text-purple-400"></i> INSTITUTIONAL DOSSIERS
+              </span>
+              <button onclick="loadShortageArticlesView()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 TOP KPI STATISTIC CARDS -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <!-- KPI 1: Total Published Dossiers -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-purple-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Total Intelligence Dossiers</div>
+            <div id="art-kpi-total-articles" class="text-xl font-bold font-mono text-purple-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">Deep-Dive Supply Shortages</div>
+          </div>
+
+          <!-- KPI 2: Global Opportunity TAM -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-cyan-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Global Shortage TAM (2030)</div>
+            <div id="art-kpi-global-tam" class="text-xl font-bold font-mono text-cyan-400">$-- Bn</div>
+            <div class="text-[10px] text-slate-500 font-mono">Total Addressable Market</div>
+          </div>
+
+          <!-- KPI 3: Indian Market Opportunity -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-emerald-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Indian Market TAM (2030)</div>
+            <div id="art-kpi-india-tam" class="text-xl font-bold font-mono text-emerald-400">₹-- Cr</div>
+            <div class="text-[10px] text-slate-500 font-mono">Import Substitution &amp; Exports</div>
+          </div>
+
+          <!-- KPI 4: Critical Bottlenecks -->
+          <div class="terminal-card p-3 rounded-lg border-l-4 border-rose-500">
+            <div class="text-[10px] font-mono uppercase text-slate-400 mb-1">Critical Chokepoints</div>
+            <div id="art-kpi-crit-count" class="text-xl font-bold font-mono text-rose-400">--</div>
+            <div class="text-[10px] text-slate-500 font-mono">&gt;40 Wks Procurement Delay</div>
+          </div>
+        </div>
+
+        <!-- FILTER TOOLBAR -->
+        <div class="terminal-card p-3 rounded-lg flex flex-wrap items-center gap-3 text-xs font-mono">
+          <!-- Category Filter -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">Category:</span>
+            <select id="filter-art-category" onchange="loadShortageArticlesView()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-purple-500">
+              <option value="All">All Categories</option>
+              <option value="Specialty Metals">Specialty Metals &amp; Power T&amp;D</option>
+              <option value="Critical Minerals">Strategic Critical Minerals</option>
+              <option value="Semiconductors">Advanced Semiconductors &amp; AI</option>
+              <option value="Aerospace">Aerospace Metal &amp; Defense</option>
+              <option value="Chemicals">Industrial Chemicals &amp; Intermediates</option>
+              <option value="Energy">Battery Minerals &amp; Energy</option>
+            </select>
+          </div>
+
+          <!-- Severity Filter -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">Severity:</span>
+            <select id="filter-art-severity" onchange="loadShortageArticlesView()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-purple-500">
+              <option value="All">All Severities</option>
+              <option value="Critical">Critical Choke</option>
+              <option value="High">High Disruption</option>
+              <option value="Moderate">Moderate</option>
+            </select>
+          </div>
+
+          <!-- Search Input -->
+          <div class="flex-1 min-w-[200px] relative">
+            <input id="filter-art-search" type="text" placeholder="Search materials, technologies, Indian companies (e.g. TRIL, NALCO, PTCIL, JSW)..." 
+              class="w-full bg-slate-900 border border-slate-700 rounded pl-7 pr-2 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              oninput="debounceArticleSearch()">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-500 text-[10px]"></i>
+          </div>
+
+          <!-- Reset Filter -->
+          <button onclick="resetArticleFilters()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs border border-slate-700">
+            Reset
+          </button>
+        </div>
+
+        <!-- ARTICLE DOSSIERS CARD GRID -->
+        <div id="articles-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 13: GLOBAL MAP -->
+      <!-- ========================================== -->
+      <section id="view-global-map" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold font-mono uppercase text-cyan-400 flex items-center gap-2">
+              <i class="fa-solid fa-earth-americas"></i> Global Geospatial Disruption Radar
+            </h2>
+            <p class="text-xs text-slate-400">Interactive world map color-coded by disruption severity. Click any marker or country to inspect sovereign risk.</p>
+          </div>
+          <div class="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Resolved</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Emerging</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span> Significant</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-600"></span> Severe</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-900"></span> Critical</span>
+          </div>
+        </div>
+
+        <div class="terminal-card rounded-lg overflow-hidden border border-slate-800" style="height: 600px;">
+          <div id="leaflet-map" style="width: 100%; height: 100%;"></div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 14: HISTORICAL TIMELINE -->
+      <!-- ========================================== -->
+      <section id="view-historical-timeline" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold font-mono uppercase text-blue-400 flex items-center gap-2">
+              <i class="fa-solid fa-chart-line"></i> 12-Month Disruption Frequency & Timeline
+            </h2>
+            <p class="text-xs text-slate-400">Tracking inception of geopolitical events, policy shifts, and manufacturing stoppages over time</p>
+          </div>
+
+          <div class="flex items-center gap-1 font-mono text-xs">
+            <button data-zoom-range="12m" onclick="zoomTimeline('12m')" class="px-2.5 py-1 rounded bg-cyan-600 text-white">12M</button>
+            <button data-zoom-range="6m" onclick="zoomTimeline('6m')" class="px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-white">6M</button>
+            <button data-zoom-range="3m" onclick="zoomTimeline('3m')" class="px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-white">3M</button>
+          </div>
+        </div>
+
+        <div class="terminal-card p-4 rounded-lg" style="height: 450px;">
+          <canvas id="historical-timeline-canvas"></canvas>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 15: ALERTS SYSTEM -->
+      <!-- ========================================== -->
+      <section id="view-alerts" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg">
+          <h2 class="text-base font-bold font-mono uppercase text-amber-400 flex items-center gap-2">
+            <i class="fa-solid fa-bell"></i> Configurable Alerts & Notification Engine
+          </h2>
+          <p class="text-xs text-slate-400">Automated triggers on risk score thresholds, price surges, and lead-time stretch</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2 terminal-card p-4 rounded-lg space-y-3">
+            <h3 class="text-xs font-mono uppercase font-bold text-slate-300 border-b border-slate-800 pb-2">
+              Active Triggered Notifications Feed
+            </h3>
+            <div id="alerts-feed-container" class="space-y-2.5"></div>
+          </div>
+
+          <div class="terminal-card p-4 rounded-lg space-y-3">
+            <h3 class="text-xs font-mono uppercase font-bold text-slate-300 border-b border-slate-800 pb-2">
+              Configured Active Alert Rules
+            </h3>
+            <div id="alerts-rules-container" class="space-y-2"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW 16: DATA SOURCES & API CONFIG -->
+      <!-- ========================================== -->
+      <section id="view-data-sources" class="view-section hidden space-y-4">
+        <div class="terminal-card p-4 rounded-lg">
+          <h2 class="text-base font-bold font-mono uppercase text-emerald-400 flex items-center gap-2">
+            <i class="fa-solid fa-database"></i> Connected Data Sources & External API Configuration
+          </h2>
+          <p class="text-xs text-slate-400">Transparent inventory of connected live feeds, historical databases, and commercial data connectors</p>
+        </div>
+
+        <div class="terminal-card rounded-lg overflow-x-auto">
+          <table class="w-full dense-table text-left">
+            <thead>
+              <tr>
+                <th>Source Name & Endpoint</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Items Ingested</th>
+                <th>Data Provided</th>
+                <th>Last Checked / Action</th>
+              </tr>
+            </thead>
+            <tbody id="data-sources-table-body">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- EVENT DETAIL MODAL (Deep Intelligence View) -->
+  <!-- ========================================== -->
+  <div id="event-detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-4xl max-h-[90vh] rounded-xl flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#0b111f]">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 live-pulse"></span>
+          <span class="text-xs font-mono uppercase tracking-wider text-cyan-400 font-bold">Comprehensive Event Intelligence Record</span>
+        </div>
+        <button onclick="closeEventModal()" class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-mono">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="event-modal-content" class="flex-1 overflow-y-auto p-6 space-y-6">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- COUNTRY INTELLIGENCE SLIDE-OVER DRAWER -->
+  <!-- ========================================== -->
+  <div id="country-intelligence-drawer" class="fixed inset-y-0 right-0 w-full max-w-md bg-[#0f172a] border-l border-slate-700 z-50 shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+    <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-[#0b111f]">
+      <span class="text-xs font-mono uppercase tracking-wider text-cyan-400 font-bold">Country Risk Radar</span>
+      <button onclick="closeCountryDrawer()" class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-mono">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="country-drawer-content" class="flex-1 overflow-y-auto p-4 space-y-4">
+      <!-- Injected via JavaScript -->
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TRANSPARENT RISK WEIGHT CONFIG MODAL -->
+  <!-- ========================================== -->
+  <div id="risk-weights-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-xl rounded-xl p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div>
+          <h3 class="text-sm font-bold font-mono uppercase text-amber-400 flex items-center gap-2">
+            <i class="fa-solid fa-sliders"></i> Transparent Risk Score Formula (0–100)
+          </h3>
+          <p class="text-xs text-slate-400">Modify the weighting factors to recalibrate risk calculations live.</p>
+        </div>
+        <button onclick="closeRiskWeightsModal()" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs font-mono">
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>Supply Concentration:</span>
+            <span id="weight-val-concentration" class="text-cyan-400 font-bold">20%</span>
+          </div>
+          <input id="weight-concentration" type="range" min="0" max="50" value="20" class="w-full accent-cyan-400" oninput="document.getElementById('weight-val-concentration').innerText = this.value + '%'">
+        </div>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>Severity of Disruption:</span>
+            <span id="weight-val-severity" class="text-cyan-400 font-bold">20%</span>
+          </div>
+          <input id="weight-severity" type="range" min="0" max="50" value="20" class="w-full accent-cyan-400" oninput="document.getElementById('weight-val-severity').innerText = this.value + '%'">
+        </div>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>Price Movement:</span>
+            <span id="weight-val-price" class="text-cyan-400 font-bold">15%</span>
+          </div>
+          <input id="weight-price" type="range" min="0" max="40" value="15" class="w-full accent-cyan-400" oninput="document.getElementById('weight-val-price').innerText = this.value + '%'">
+        </div>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>Lead-Time Increase:</span>
+            <span id="weight-val-leadtime" class="text-cyan-400 font-bold">15%</span>
+          </div>
+          <input id="weight-leadtime" type="range" min="0" max="40" value="15" class="w-full accent-cyan-400" oninput="document.getElementById('weight-val-leadtime').innerText = this.value + '%'">
+        </div>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>Geopolitical Risk:</span>
+            <span id="weight-val-geopolitics" class="text-cyan-400 font-bold">10%</span>
+          </div>
+          <input id="weight-geopolitics" type="range" min="0" max="30" value="10" class="w-full accent-cyan-400" oninput="document.getElementById('weight-val-geopolitics').innerText = this.value + '%'">
+        </div>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>Substitutability:</span>
+            <span id="weight-val-substitutability" class="text-cyan-400 font-bold">10%</span>
+          </div>
+          <input id="weight-substitutability" type="range" min="0" max="30" value="10" class="w-full accent-cyan-400" oninput="document.getElementById('weight-val-substitutability').innerText = this.value + '%'">
+        </div>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>Duration:</span>
+            <span id="weight-val-duration" class="text-cyan-400 font-bold">5%</span>
+          </div>
+          <input id="weight-duration" type="range" min="0" max="20" value="5" class="w-full accent-cyan-400" oninput="document.getElementById('weight-val-duration').innerText = this.value + '%'">
+        </div>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>Downstream Criticality:</span>
+            <span id="weight-val-downstream" class="text-cyan-400 font-bold">5%</span>
+          </div>
+          <input id="weight-downstream" type="range" min="0" max="20" value="5" class="w-full accent-cyan-400" oninput="document.getElementById('weight-val-downstream').innerText = this.value + '%'">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+        <button onclick="closeRiskWeightsModal()" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 font-mono text-xs">Cancel</button>
+        <button onclick="saveRiskWeights()" class="px-4 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold">Save & Recalculate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- INDIAN STOCK DETAIL MODAL -->
+  <!-- ========================================== -->
+  <div id="indian-stock-detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#0f172a] border border-orange-500/40 w-full max-w-4xl max-h-[90vh] rounded-xl flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#0b111f]">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-orange-400 live-pulse"></span>
+          <span class="text-xs font-mono uppercase tracking-wider text-orange-400 font-bold">Indian Equity Supply-Chain Transmission Record</span>
+        </div>
+        <button onclick="closeIndianStockModal()" class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-mono">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="indian-stock-modal-content" class="flex-1 overflow-y-auto p-6 space-y-6">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- ORDER PIPELINE COMPANY DETAIL MODAL -->
+  <!-- ========================================== -->
+  <div id="order-pipeline-company-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#0f172a] border border-emerald-500/40 w-full max-w-4xl max-h-[90vh] rounded-xl flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#0b111f]">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-file-invoice-dollar text-emerald-400"></i>
+          <span class="text-xs font-mono uppercase tracking-wider text-emerald-400 font-bold">Company Order Book &amp; Landmark Pipeline Dossier</span>
+        </div>
+        <button onclick="closeCompanyOrderModal()" class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-mono">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="order-company-modal-content" class="flex-1 overflow-y-auto p-6 space-y-6">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SHORTAGE ARTICLE COMPREHENSIVE MODAL -->
+  <!-- ========================================== -->
+  <div id="shortage-article-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-2 md:p-6 hidden">
+    <div class="bg-[#0f172a] border border-purple-500/50 w-full max-w-5xl max-h-[92vh] rounded-xl flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#0b111f]">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-book-open text-purple-400"></i>
+          <span class="text-xs font-mono uppercase tracking-wider text-purple-400 font-bold">Strategic Supply Shortage Dossier</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-copy-article" onclick="copyCurrentArticleMarkdown()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs border border-slate-700 flex items-center gap-1.5">
+            <i class="fa-regular fa-copy"></i> Copy Markdown
+          </button>
+          <button onclick="window.print()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs border border-slate-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-print"></i> Print
+          </button>
+          <button onclick="closeArticleModal()" class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-mono">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="shortage-article-modal-content" class="flex-1 overflow-y-auto p-6 space-y-6 text-slate-200 font-sans">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Scripts -->
+  <script src="/static/js/causal_tree.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/map.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

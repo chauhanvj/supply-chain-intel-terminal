@@ -1,0 +1,14 @@
+# Render.com Infrastructure Blueprint
+services:
+  - type: web
+    name: global-supply-chain-intel
+    env: python
+    runtime: python-3.12
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
