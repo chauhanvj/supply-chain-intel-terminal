@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+venv/
+.venv/
+env/
+
+# Large local Windows binaries
+cloudflared.exe
+*.exe
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Scratch and test files
+scratch/
+verify_*.py
+automated_e2e_test.py
+take_screenshot_of_all_views.py
+debug_views.py
+test_cards.py
+test_endpoints.py
+test_indian_stocks_e2e.py
